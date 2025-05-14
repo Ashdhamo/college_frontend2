@@ -277,17 +277,7 @@ function StudentPage() {
           </ul>
         </nav>
       )}
-      
-      <div className="welcome-message">
-        <h2>
-          {user.position === 'admin' ? 'Student Management' : `Hi, ${user.user_name}!`}
-        </h2>
-        <p>
-          {user.position === 'admin' 
-            ? 'Manage student records, enrollments, and information' 
-            : 'Welcome to the Student Dashboard'}
-        </p>
-      </div>
+
       
       {alert && (
         <div className={`alert alert-${alert.type}`}>
