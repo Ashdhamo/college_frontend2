@@ -39,9 +39,37 @@ function ProfessorPage() {
     
     setUser(userData);
     
-    // Load all professors initially
-    searchProfessors('', '', null, null, '');
+    // If user is a professor, fetch their specific data
+    if (userData.position === 'professor') {
+      fetchProfessorData(userData.id);
+    } else {
+      // Load all professors for admin
+      searchProfessors('', '', null, null, '');
+    }
   }, [navigate]);
+  
+  const fetchProfessorData = async (id) => {
+    setLoading(true);
+    try {
+      const response = await fetch(`http://127.0.0.1:8080/professor/${id}`, {
+        method: 'GET',
+        headers: {
+          'Content-Type': 'application/json',
+        }
+      });
+      
+      if (response.ok) {
+        const data = await response.json();
+        setProfessors([data]); // Set the professor's own data
+      } else {
+        console.error('Error fetching professor data');
+      }
+    } catch (error) {
+      console.error('Error:', error);
+    } finally {
+      setLoading(false);
+    }
+  };
 
   const handleLogout = () => {
     localStorage.removeItem('user');
@@ -306,7 +334,11 @@ function ProfessorPage() {
   return (
     <div className="page-container">
       <div className="page-header">
-        <h1>Professor Management</h1>
+        <h1>
+          {user.position === 'professor' && professors.length > 0
+            ? `Hello, Professor ${professors[0].name}` 
+            : 'Professor Management'}
+        </h1>
         <button onClick={handleLogout} className="logout-btn">
           <i className="fas fa-sign-out-alt"></i> Logout
         </button>
@@ -344,16 +376,7 @@ function ProfessorPage() {
         </nav>
       )}
       
-      <div className="welcome-message">
-        <h2>
-          {user.position === 'admin' ? 'Professor Management' : `Hi, ${user.user_name}!`}
-        </h2>
-        <p>
-          {user.position === 'admin' 
-            ? 'Manage professor profiles, assignments, and schedules' 
-            : 'Welcome to the Professor Dashboard'}
-        </p>
-      </div>
+
       
       {alert && (
         <div className={`alert alert-${alert.type}`}>
@@ -361,107 +384,109 @@ function ProfessorPage() {
         </div>
       )}
       
-      <div className="search-filter-container">
-        <div className="search-bar">
-          <input 
-            type="text" 
-            placeholder="Search professors..." 
-            value={searchQuery}
-            onChange={handleSearchChange}
-          />
-        </div>
-        
-        <div className="filter-dropdown">
-          <button 
-            className={`filter-button ${showFilterMenu ? 'active' : ''}`} 
-            onClick={toggleFilterMenu}
-          >
-            <span>Filter</span>
-            {hasActiveFilters && <span className="filter-badge"></span>}
-            <i className="fas fa-chevron-down"></i>
-          </button>
+      {user.position === 'admin' && (
+        <div className="search-filter-container">
+          <div className="search-bar">
+            <input 
+              type="text" 
+              placeholder="Search professors..." 
+              value={searchQuery}
+              onChange={handleSearchChange}
+            />
+          </div>
           
-          <div className={`filter-menu ${showFilterMenu ? 'show' : ''}`}>
-            <div className="filter-section">
-              <h4>Department</h4>
-              <div className="filter-search">
-                <input 
-                  type="text" 
-                  placeholder="Search department..." 
-                  value={departmentQuery}
-                  onChange={handleDepartmentChange}
-                />
-              </div>
-            </div>
+          <div className="filter-dropdown">
+            <button 
+              className={`filter-button ${showFilterMenu ? 'active' : ''}`} 
+              onClick={toggleFilterMenu}
+            >
+              <span>Filter</span>
+              {hasActiveFilters && <span className="filter-badge"></span>}
+              <i className="fas fa-chevron-down"></i>
+            </button>
             
-            <div className="filter-section">
-              <h4>Tenure Status</h4>
-              <div className="checkbox-group">
-                <div className="checkbox-item">
+            <div className={`filter-menu ${showFilterMenu ? 'show' : ''}`}>
+              <div className="filter-section">
+                <h4>Department</h4>
+                <div className="filter-search">
                   <input 
-                    type="checkbox" 
-                    id="tenured" 
-                    checked={tenureFilter === 1} 
-                    onChange={() => handleTenureChange(1)} 
+                    type="text" 
+                    placeholder="Search department..." 
+                    value={departmentQuery}
+                    onChange={handleDepartmentChange}
                   />
-                  <label htmlFor="tenured">Tenured</label>
-                </div>
-                <div className="checkbox-item">
-                  <input 
-                    type="checkbox" 
-                    id="nonTenured" 
-                    checked={tenureFilter === 0} 
-                    onChange={() => handleTenureChange(0)} 
-                  />
-                  <label htmlFor="nonTenured">Non-Tenured</label>
                 </div>
               </div>
-            </div>
-            
-            <div className="filter-section">
-              <h4>Salary</h4>
-              <div className="checkbox-group">
-                <div className="checkbox-item">
-                  <input 
-                    type="checkbox" 
-                    id="greaterThan" 
-                    checked={salaryFilter.type === 'greater'} 
-                    onChange={() => handleSalaryFilterChange('greater')} 
-                  />
-                  <label htmlFor="greaterThan">Greater than</label>
-                </div>
-                <div className="checkbox-item">
-                  <input 
-                    type="checkbox" 
-                    id="lessThan" 
-                    checked={salaryFilter.type === 'less'} 
-                    onChange={() => handleSalaryFilterChange('less')} 
-                  />
-                  <label htmlFor="lessThan">Less than</label>
-                </div>
-                {salaryFilter.type && (
-                  <div className="filter-search">
+              
+              <div className="filter-section">
+                <h4>Tenure Status</h4>
+                <div className="checkbox-group">
+                  <div className="checkbox-item">
                     <input 
-                      type="number" 
-                      placeholder="Enter amount..." 
-                      value={salaryFilter.value}
-                      onChange={handleSalaryValueChange}
+                      type="checkbox" 
+                      id="tenured" 
+                      checked={tenureFilter === 1} 
+                      onChange={() => handleTenureChange(1)} 
                     />
+                    <label htmlFor="tenured">Tenured</label>
                   </div>
-                )}
+                  <div className="checkbox-item">
+                    <input 
+                      type="checkbox" 
+                      id="nonTenured" 
+                      checked={tenureFilter === 0} 
+                      onChange={() => handleTenureChange(0)} 
+                    />
+                    <label htmlFor="nonTenured">Non-Tenured</label>
+                  </div>
+                </div>
               </div>
+              
+              <div className="filter-section">
+                <h4>Salary</h4>
+                <div className="checkbox-group">
+                  <div className="checkbox-item">
+                    <input 
+                      type="checkbox" 
+                      id="greaterThan" 
+                      checked={salaryFilter.type === 'greater'} 
+                      onChange={() => handleSalaryFilterChange('greater')} 
+                    />
+                    <label htmlFor="greaterThan">Greater than</label>
+                  </div>
+                  <div className="checkbox-item">
+                    <input 
+                      type="checkbox" 
+                      id="lessThan" 
+                      checked={salaryFilter.type === 'less'} 
+                      onChange={() => handleSalaryFilterChange('less')} 
+                    />
+                    <label htmlFor="lessThan">Less than</label>
+                  </div>
+                  {salaryFilter.type && (
+                    <div className="filter-search">
+                      <input 
+                        type="number" 
+                        placeholder="Enter amount..." 
+                        value={salaryFilter.value}
+                        onChange={handleSalaryValueChange}
+                      />
+                    </div>
+                  )}
+                </div>
+              </div>
+              
+              {hasActiveFilters && (
+                <div className="filter-actions">
+                  <button onClick={clearFilters} className="clear-filters">
+                    <i className="fas fa-times"></i> Clear Filters
+                  </button>
+                </div>
+              )}
             </div>
-            
-            {hasActiveFilters && (
-              <div className="filter-actions">
-                <button onClick={clearFilters} className="clear-filters">
-                  <i className="fas fa-times"></i> Clear Filters
-                </button>
-              </div>
-            )}
           </div>
         </div>
-      </div>
+      )}
       
       {loading ? (
         <div className="loading">Loading professors...</div>
@@ -471,9 +496,6 @@ function ProfessorPage() {
             <div className="professor-cards">
               {professors.map(professor => (
                 <div key={professor.id} className="professor-card">
-                  <div className="professor-card-header">
-                    {professor.name}
-                  </div>
                   <div className="professor-card-body">
                     <div className="professor-info">
                       <p>
@@ -500,20 +522,6 @@ function ProfessorPage() {
                         {professor.years_worked} {professor.years_worked === 1 ? 'year' : 'years'} of service
                       </p>
                     </div>
-                    
-                    {professor.classes && professor.classes.length > 0 && (
-                      <div className="professor-classes">
-                        <h4>Classes</h4>
-                        <ul>
-                          {professor.classes.map(cls => (
-                            <li key={cls.class_id}>
-                              <i className="fas fa-book"></i>
-                              {cls.class_name}
-                            </li>
-                          ))}
-                        </ul>
-                      </div>
-                    )}
                     
                     {user.position === 'admin' && (
                       <div className="professor-card-actions">
