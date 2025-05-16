@@ -7,12 +7,14 @@ function ProfessorPage() {
   const [searchQuery, setSearchQuery] = useState('');
   const [departmentQuery, setDepartmentQuery] = useState('');
   const [professors, setProfessors] = useState([]);
+  const [classes, setClasses] = useState([]);
   const [loading, setLoading] = useState(false);
   const [tenureFilter, setTenureFilter] = useState(null); // null, 0, or 1
   const [salaryFilter, setSalaryFilter] = useState({
     type: null, // null, "greater", or "less"
     value: ""
   });
+  const [selectedClass, setSelectedClass] = useState(null);
   const [showModal, setShowModal] = useState(false);
   const [modalMode, setModalMode] = useState('add'); // 'add' or 'edit'
   const [currentProfessor, setCurrentProfessor] = useState(null);
@@ -39,6 +41,9 @@ function ProfessorPage() {
     
     setUser(userData);
     
+    // Fetch all classes data
+    fetchAllClasses();
+    
     // If user is a professor, fetch their specific data
     if (userData.position === 'professor') {
       fetchProfessorData(userData.id);
@@ -47,6 +52,18 @@ function ProfessorPage() {
       searchProfessors('', '', null, null, '');
     }
   }, [navigate]);
+  
+  const fetchAllClasses = async () => {
+    try {
+      const response = await fetch('http://127.0.0.1:8080/classes/');
+      if (response.ok) {
+        const data = await response.json();
+        setClasses(data);
+      }
+    } catch (error) {
+      console.error('Error fetching classes:', error);
+    }
+  };
   
   const fetchProfessorData = async (id) => {
     setLoading(true);
@@ -329,6 +346,29 @@ function ProfessorPage() {
 
   const hasActiveFilters = departmentQuery || tenureFilter !== null || salaryFilter.type;
 
+  // Format time from 24-hour to 12-hour format
+  const formatTime = (timeString) => {
+    const [hours, minutes] = timeString.split(':');
+    const hour = parseInt(hours, 10);
+    const ampm = hour >= 12 ? 'PM' : 'AM';
+    const formattedHour = hour % 12 || 12;
+    return `${formattedHour}:${minutes} ${ampm}`;
+  };
+
+  // Convert day code to full day name
+  const getDayName = (dayCode) => {
+    const days = {
+      'M': 'Monday',
+      'T': 'Tuesday',
+      'W': 'Wednesday',
+      'R': 'Thursday',
+      'F': 'Friday',
+      'SAT': 'Saturday',
+      'SUN': 'Sunday'
+    };
+    return days[dayCode] || dayCode;
+  };
+
   if (!user) return <div>Loading...</div>;
 
   return (
@@ -493,56 +533,203 @@ function ProfessorPage() {
       ) : (
         <>
           {professors.length > 0 ? (
-            <div className="professor-cards">
-              {professors.map(professor => (
-                <div key={professor.id} className="professor-card">
-                  <div className="professor-card-body">
-                    <div className="professor-info">
-                      <p>
-                        <i className="fas fa-building"></i>
-                        {professor.department}
-                        <span className={`tenure-badge tenure-${professor.tenure ? 'yes' : 'no'}`}>
-                          {professor.tenure ? 'Tenured' : 'Non-Tenured'}
-                        </span>
-                      </p>
-                      <p>
-                        <i className="fas fa-envelope"></i>
-                        {professor.email}
-                      </p>
-                      <p>
-                        <i className="fas fa-phone"></i>
-                        {professor.phone}
-                      </p>
-                      <p>
-                        <i className="fas fa-dollar-sign"></i>
-                        ${parseFloat(professor.salary).toLocaleString()}
-                      </p>
-                      <p>
-                        <i className="fas fa-calendar-alt"></i>
-                        {professor.years_worked} {professor.years_worked === 1 ? 'year' : 'years'} of service
-                      </p>
+            <>
+              <div className="professor-cards">
+                {professors.map(professor => (
+                  <div key={professor.id} className="professor-card">
+                    <div className="professor-card-body">
+                      <div className="professor-info">
+                        <p>
+                          <i className="fas fa-building"></i>
+                          {professor.department}
+                          <span className={`tenure-badge tenure-${professor.tenure ? 'yes' : 'no'}`}>
+                            {professor.tenure ? 'Tenured' : 'Non-Tenured'}
+                          </span>
+                        </p>
+                        <p>
+                          <i className="fas fa-envelope"></i>
+                          {professor.email}
+                        </p>
+                        <p>
+                          <i className="fas fa-phone"></i>
+                          {professor.phone}
+                        </p>
+                        <p>
+                          <i className="fas fa-dollar-sign"></i>
+                          ${parseFloat(professor.salary).toLocaleString()}
+                        </p>
+                        <p>
+                          <i className="fas fa-calendar-alt"></i>
+                          {professor.years_worked} {professor.years_worked === 1 ? 'year' : 'years'} of service
+                        </p>
+                      </div>
+                      
+                      {user.position === 'admin' && (
+                        <div className="professor-card-actions">
+                          <button 
+                            className="action-btn edit-btn" 
+                            onClick={() => openEditModal(professor)}
+                          >
+                            <i className="fas fa-edit"></i>
+                          </button>
+                          <button 
+                            className="action-btn delete-btn" 
+                            onClick={() => handleDelete(professor.id)}
+                          >
+                            <i className="fas fa-trash"></i>
+                          </button>
+                        </div>
+                      )}
+                    </div>
+                  </div>
+                ))}
+              </div>
+              
+              {professors[0].classes && professors[0].classes.length > 0 && classes.length > 0 && (
+                <>
+                  <h2 className="section-title">Weekly Schedule</h2>
+                  <div className="weekly-schedule-container">
+                    <div className="weekly-schedule">
+                      <div className="schedule-grid">
+                        <div className="time-column">
+                          <div className="time-header">Time</div>
+                          {Array.from({ length: 12 }, (_, i) => i + 8).map(hour => (
+                            <div key={hour} className="time-slot-label">
+                              {hour > 12 ? hour - 12 : hour}:00 {hour >= 12 ? 'PM' : 'AM'}
+                            </div>
+                          ))}
+                        </div>
+                        {['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday'].map(day => {
+                          const dayCode = day.charAt(0) === 'T' ? (day === 'Tuesday' ? 'T' : 'R') : day.charAt(0);
+                          return (
+                            <div key={day} className="day-column">
+                              <div className="day-header">{day}</div>
+                              <div className="day-slots">
+                                {Array.from({ length: 12 }, (_, i) => {
+                                  const hour = i + 8;
+                                  const classesAtThisTime = [];
+                                  
+                                  if (classes && classes.length > 0) {
+                                    professors[0].classes.forEach(cls => {
+                                      const fullClass = classes.find(c => c.class_id === cls.class_id);
+                                      if (fullClass && fullClass.schedule) {
+                                        fullClass.schedule.forEach(schedule => {
+                                          if (schedule.class_day === dayCode) {
+                                            const startHour = parseInt(schedule.start_time.split(':')[0]);
+                                            const endHour = parseInt(schedule.end_time.split(':')[0]);
+                                            
+                                            if (hour >= startHour && hour < endHour) {
+                                              classesAtThisTime.push({
+                                                id: fullClass.class_id,
+                                                name: fullClass.class_name,
+                                                start: schedule.start_time,
+                                                end: schedule.end_time
+                                              });
+                                            }
+                                          }
+                                        });
+                                      }
+                                    });
+                                  }
+                                  
+                                  return (
+                                    <div key={hour} className="schedule-slot">
+                                      {classesAtThisTime.map((cls, idx) => (
+                                        <div 
+                                          key={idx} 
+                                          className={`scheduled-class ${selectedClass === cls.id ? 'selected' : ''}`}
+                                          onClick={() => setSelectedClass(selectedClass === cls.id ? null : cls.id)}
+                                        >
+                                          {cls.name}
+                                        </div>
+                                      ))}
+                                    </div>
+                                  );
+                                })}
+                              </div>
+                            </div>
+                          );
+                        })}
+                      </div>
                     </div>
                     
-                    {user.position === 'admin' && (
-                      <div className="professor-card-actions">
-                        <button 
-                          className="action-btn edit-btn" 
-                          onClick={() => openEditModal(professor)}
-                        >
-                          <i className="fas fa-edit"></i>
-                        </button>
-                        <button 
-                          className="action-btn delete-btn" 
-                          onClick={() => handleDelete(professor.id)}
-                        >
-                          <i className="fas fa-trash"></i>
-                        </button>
+                    {selectedClass && (
+                      <div className="selected-class-details">
+                        {classes.filter(c => c.class_id === selectedClass).map(fullClass => (
+                          <div key={fullClass.class_id} className="class-detail-card">
+                            <h3>{fullClass.class_name}</h3>
+                            <p><i className="fas fa-calendar-alt"></i> {new Date(fullClass.start_date).toLocaleDateString()} - {new Date(fullClass.end_date).toLocaleDateString()}</p>
+                            <p><i className="fas fa-graduation-cap"></i> Units: {fullClass.units}</p>
+                            <p><i className="fas fa-users"></i> Seats: {fullClass.seats}</p>
+                            
+                            {fullClass.schedule && fullClass.schedule.length > 0 && (
+                              <div className="class-schedule">
+                                <h4><i className="fas fa-clock"></i> Schedule</h4>
+                                <ul>
+                                  {fullClass.schedule.map((scheduleItem, index) => (
+                                    <li key={index} className="schedule-item">
+                                      <div className="day-badge">{getDayName(scheduleItem.class_day)}</div>
+                                      <div className="time-slot">
+                                        {formatTime(scheduleItem.start_time)} - {formatTime(scheduleItem.end_time)}
+                                      </div>
+                                    </li>
+                                  ))}
+                                </ul>
+                              </div>
+                            )}
+                          </div>
+                        ))}
                       </div>
                     )}
                   </div>
-                </div>
-              ))}
-            </div>
+                  
+                  <h2 className="section-title">Classes</h2>
+                  <div className="class-cards">
+                    {professors[0].classes.map(cls => {
+                      // Fetch the full class details
+                      const fullClass = classes.find(c => c.class_id === cls.class_id);
+                      return fullClass ? (
+                        <div key={cls.class_id} className="class-card">
+                          <div className="class-card-header">
+                            <h3>{cls.class_name}</h3>
+                          </div>
+                          <div className="class-card-body">
+                            <p><i className="fas fa-calendar-alt"></i> {new Date(fullClass.start_date).toLocaleDateString()} - {new Date(fullClass.end_date).toLocaleDateString()}</p>
+                            <p><i className="fas fa-graduation-cap"></i> Units: {fullClass.units}</p>
+                            <p><i className="fas fa-users"></i> Seats: {fullClass.seats}</p>
+                            
+                            {fullClass.schedule && fullClass.schedule.length > 0 && (
+                              <div className="class-schedule">
+                                <h4><i className="fas fa-clock"></i> Schedule</h4>
+                                <ul>
+                                  {fullClass.schedule.map((scheduleItem, index) => (
+                                    <li key={index} className="schedule-item">
+                                      <div className="day-badge">{getDayName(scheduleItem.class_day)}</div>
+                                      <div className="time-slot">
+                                        {formatTime(scheduleItem.start_time)} - {formatTime(scheduleItem.end_time)}
+                                      </div>
+                                    </li>
+                                  ))}
+                                </ul>
+                              </div>
+                            )}
+                          </div>
+                        </div>
+                      ) : (
+                        <div key={cls.class_id} className="class-card">
+                          <div className="class-card-header">
+                            <h3>{cls.class_name}</h3>
+                          </div>
+                          <div className="class-card-body">
+                            <p><i className="fas fa-book"></i> Class ID: {cls.class_id}</p>
+                          </div>
+                        </div>
+                      );
+                    })}
+                  </div>
+                </>
+              )}
+            </>
           ) : (
             <div className="no-results">
               <i className="fas fa-search"></i>
