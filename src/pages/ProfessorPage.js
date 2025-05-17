@@ -408,9 +408,9 @@ function ProfessorPage() {
               </a>
             </li>
             <li>
-              <a href="#" onClick={handleLogout} className="logout">
+              <button onClick={handleLogout} className="logout">
                 <i className="fas fa-sign-out-alt"></i> Logout
-              </a>
+              </button>
             </li>
           </ul>
         </nav>
