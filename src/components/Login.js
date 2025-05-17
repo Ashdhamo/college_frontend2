@@ -30,7 +30,7 @@ function Login() {
           navigate('/admin');
           break;
         case 'student':
-          navigate('/student');
+          navigate('/student-interface');
           break;
         case 'professor':
           navigate('/professor');

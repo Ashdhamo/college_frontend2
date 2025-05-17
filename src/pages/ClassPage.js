@@ -355,23 +355,8 @@ function ClassPage() {
         </div>
         
         <div className="filter-dropdown">
-          <button 
-            className={`filter-button ${showFilterMenu ? 'active' : ''}`} 
-            onClick={toggleFilterMenu}
-          >
-            <span>Filter</span>
-            <i className="fas fa-chevron-down"></i>
-          </button>
+
           
-          <div className={`filter-menu ${showFilterMenu ? 'show' : ''}`}>
-            <ul>
-              <li><a href="#">All Classes</a></li>
-              <li><a href="#">Spring 2025</a></li>
-              <li><a href="#">Fall 2025</a></li>
-              <li><a href="#">By Professor</a></li>
-              <li><a href="#">By Units</a></li>
-            </ul>
-          </div>
         </div>
       </div>
 
