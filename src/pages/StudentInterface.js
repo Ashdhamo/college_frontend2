@@ -402,53 +402,82 @@ function StudentInterface() {
               <div className="available-classes">
                 {availableClasses
                   .filter(cls => !classes.some(c => c.class_id === cls.class_id)) // Only show non-enrolled classes
-                  .map(cls => (
-                    <div key={cls.class_id} className="available-class-card">
-                      <div 
-                        className="available-class-header"
-                        onClick={() => setExpandedClassId(expandedClassId === cls.class_id ? null : cls.class_id)}
-                      >
-                        <h3>{cls.class_name}</h3>
-                        <i className={`fas fa-chevron-${expandedClassId === cls.class_id ? 'up' : 'down'}`}></i>
-                      </div>
+                  .map(cls => {
+                    // Check for schedule conflicts
+                    const hasScheduleConflict = cls.schedule && classes.some(enrolledClass => {
+                      if (!enrolledClass.schedule) return false;
                       
-                      {expandedClassId === cls.class_id && (
-                        <div className="available-class-details">
-                          <p><i className="fas fa-chalkboard-teacher"></i> Professor: {cls.professor_name || 'TBA'}</p>
-                          <p><i className="fas fa-calendar-alt"></i> {new Date(cls.start_date).toLocaleDateString()} - {new Date(cls.end_date).toLocaleDateString()}</p>
-                          <p><i className="fas fa-graduation-cap"></i> Units: {cls.units}</p>
+                      return cls.schedule.some(newSchedule => 
+                        enrolledClass.schedule.some(existingSchedule => {
+                          // Check if same day
+                          if (newSchedule.class_day !== existingSchedule.class_day) return false;
                           
-                          {cls.schedule && cls.schedule.length > 0 && (
-                            <div className="class-schedule">
-                              <h4><i className="fas fa-clock"></i> Schedule</h4>
-                              <ul>
-                                {cls.schedule.map((scheduleItem, index) => (
-                                  <li key={index} className="schedule-item">
-                                    <div className="day-badge">{getDayName(scheduleItem.class_day)}</div>
-                                    <div className="time-slot">
-                                      {formatTime(scheduleItem.start_time)} - {formatTime(scheduleItem.end_time)}
-                                    </div>
-                                  </li>
-                                ))}
-                              </ul>
-                            </div>
-                          )}
+                          // Parse times
+                          const newStart = parseInt(newSchedule.start_time.split(':')[0]) + parseInt(newSchedule.start_time.split(':')[1])/60;
+                          const newEnd = parseInt(newSchedule.end_time.split(':')[0]) + parseInt(newSchedule.end_time.split(':')[1])/60;
+                          const existingStart = parseInt(existingSchedule.start_time.split(':')[0]) + parseInt(existingSchedule.start_time.split(':')[1])/60;
+                          const existingEnd = parseInt(existingSchedule.end_time.split(':')[0]) + parseInt(existingSchedule.end_time.split(':')[1])/60;
                           
-                          <div className="enrollment-action">
-                            <button 
-                              className="enroll-btn" 
-                              onClick={(e) => {
-                                e.stopPropagation();
-                                handleEnroll(cls.class_id);
-                              }}
-                            >
-                              <i className="fas fa-plus"></i> Add Class
-                            </button>
-                          </div>
+                          // Check for overlap
+                          return (newStart < existingEnd && newEnd > existingStart);
+                        })
+                      );
+                    });
+                    
+                    return (
+                      <div key={cls.class_id} className="available-class-card">
+                        <div 
+                          className={hasScheduleConflict ? "unavailable-class-header" : "available-class-header"}
+                          onClick={() => setExpandedClassId(expandedClassId === cls.class_id ? null : cls.class_id)}
+                        >
+                          <h3>{cls.class_name}</h3>
+                          <i className={`fas fa-chevron-${expandedClassId === cls.class_id ? 'up' : 'down'}`}></i>
                         </div>
-                      )}
-                    </div>
-                  ))}
+                        
+                        {expandedClassId === cls.class_id && (
+                          <div className="available-class-details">
+                            <p><i className="fas fa-chalkboard-teacher"></i> Professor: {cls.professor_name || 'TBA'}</p>
+                            <p><i className="fas fa-calendar-alt"></i> {new Date(cls.start_date).toLocaleDateString()} - {new Date(cls.end_date).toLocaleDateString()}</p>
+                            <p><i className="fas fa-graduation-cap"></i> Units: {cls.units}</p>
+                            
+                            {cls.schedule && cls.schedule.length > 0 && (
+                              <div className="class-schedule">
+                                <h4><i className="fas fa-clock"></i> Schedule</h4>
+                                <ul>
+                                  {cls.schedule.map((scheduleItem, index) => (
+                                    <li key={index} className="schedule-item">
+                                      <div className="day-badge">{getDayName(scheduleItem.class_day)}</div>
+                                      <div className="time-slot">
+                                        {formatTime(scheduleItem.start_time)} - {formatTime(scheduleItem.end_time)}
+                                      </div>
+                                    </li>
+                                  ))}
+                                </ul>
+                              </div>
+                            )}
+                            
+                            {hasScheduleConflict ? (
+                              <div className="enrollment-action">
+                                <p style={{color: "#95a5a6"}}><i className="fas fa-exclamation-circle"></i> Schedule conflict with enrolled class</p>
+                              </div>
+                            ) : (
+                              <div className="enrollment-action">
+                                <button 
+                                  className="enroll-btn" 
+                                  onClick={(e) => {
+                                    e.stopPropagation();
+                                    handleEnroll(cls.class_id);
+                                  }}
+                                >
+                                  <i className="fas fa-plus"></i> Add Class
+                                </button>
+                              </div>
+                            )}
+                          </div>
+                        )}
+                      </div>
+                    );
+                  })}
               </div>
             </>
           )}
